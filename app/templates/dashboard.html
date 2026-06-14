@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — SlotSync</title>
+  <meta name="description" content="Gerencie sua agenda, horários e links de agendamento.">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <style>
+    body { display: flex; min-height: 100vh; }
+
+    /* ─── Sidebar ─── */
+    .sidebar {
+      width: 240px; flex-shrink: 0;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      position: sticky; top: 0; height: 100vh;
+    }
+    .sidebar-logo { padding: 24px 20px 16px; display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 800; border-bottom: 1px solid var(--border); }
+    .sidebar-logo-icon { font-size: 26px; }
+    .sidebar-nav { padding: 16px 12px; flex: 1; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      font-size: 14px; font-weight: 500; color: var(--text-secondary);
+      cursor: pointer; transition: var(--transition);
+      border: none; background: none; font-family: inherit; width: 100%; text-align: left;
+    }
+    .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+    .nav-item.active { background: rgba(99,102,241,0.12); color: var(--purple-light); }
+    .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+    .sidebar-user { padding: 16px 20px; border-top: 1px solid var(--border); }
+    .user-info { display: flex; align-items: center; gap: 10px; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--purple), var(--violet)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+    .user-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .user-email { font-size: 11px; color: var(--text-muted); }
+
+    /* ─── Main ─── */
+    .main { flex: 1; overflow-y: auto; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; border-bottom: 1px solid var(--border); background: var(--bg-secondary); position: sticky; top: 0; z-index: 10; }
+    .topbar-title { font-size: 20px; font-weight: 700; }
+    .content { padding: 32px; }
+
+    /* ─── Sections ─── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ─── Stats ─── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px; }
+    .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .stat-value { font-size: 32px; font-weight: 800; }
+    .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    /* ─── Section Header ─── */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .section-header h2 { font-size: 18px; }
+
+    /* ─── Table ─── */
+    .table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: rgba(0,0,0,0.2); }
+    th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 14px 16px; font-size: 14px; border-top: 1px solid var(--border); color: var(--text-secondary); }
+    tr:hover td { background: var(--bg-card-hover); }
+    .td-main { color: var(--text-primary); font-weight: 500; }
+
+    /* ─── Link box ─── */
+    .link-box { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; }
+    .link-url { font-size: 13px; color: var(--purple-light); font-family: monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .copy-btn { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--text-muted); padding: 2px 4px; border-radius: 4px; transition: var(--transition); }
+    .copy-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+
+    /* ─── Empty State ─── */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+    .empty-state p { font-size: 15px; }
+
+    /* ─── Modal form ─── */
+    .modal h2 { font-size: 20px; margin-bottom: 8px; }
+    .modal .subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+
+    /* ─── Days grid ─── */
+    .days-grid { display: grid; gap: 10px; }
+    .day-row { display: grid; grid-template-columns: 80px 1fr 1fr 40px; align-items: center; gap: 8px; }
+    .day-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+    .day-enabled { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+
+    /* Toggle switch */
+    .toggle { position: relative; display: inline-block; width: 36px; height: 20px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; inset: 0; background: rgba(255,255,255,0.1); border-radius: 10px; transition: 0.3s; }
+    .slider::before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+    input:checked + .slider { background: var(--purple); }
+    input:checked + .slider::before { transform: translateX(16px); }
+
+    /* ─── Booking card ─── */
+    .booking-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; transition: var(--transition); }
+    .booking-card:hover { border-color: var(--border-accent); }
+    .booking-time { font-size: 13px; color: var(--purple-light); font-weight: 600; }
+    .booking-guest { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .booking-email { font-size: 13px; color: var(--text-muted); }
+    .booking-notes { font-size: 13px; color: var(--text-secondary); margin-top: 4px; font-style: italic; }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <span class="sidebar-logo-icon">🗓️</span>
+    SlotSync
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" onclick="showSection('overview')" id="nav-overview">
+      <span class="nav-icon">📊</span> Visão Geral
+    </button>
+    <button class="nav-item" onclick="showSection('schedules')" id="nav-schedules">
+      <span class="nav-icon">⚙️</span> Minhas Agendas
+    </button>
+    <button class="nav-item" onclick="showSection('links')" id="nav-links">
+      <span class="nav-icon">🔗</span> Links Públicos
+    </button>
+    <button class="nav-item" onclick="showSection('bookings')" id="nav-bookings">
+      <span class="nav-icon">📅</span> Reuniões
+    </button>
+    <button class="nav-item" onclick="showSection('profile')" id="nav-profile">
+      <span class="nav-icon">👤</span> Perfil
+    </button>
+  </nav>
+  <div class="sidebar-user">
+    <div class="user-info">
+      <div class="user-avatar" id="user-avatar-sidebar">?</div>
+      <div>
+        <div class="user-name" id="user-name-sidebar">Carregando...</div>
+        <div class="user-email" id="user-email-sidebar"></div>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:10px" onclick="logout()">Sair</button>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Visão Geral</div>
+    <div style="display:flex;gap:8px" id="topbar-actions"></div>
+  </div>
+
+  <div class="content">
+    <!-- ── OVERVIEW ── -->
+    <div class="section active" id="section-overview">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Agendas</div>
+          <div class="stat-value gradient-text" id="stat-schedules">—</div>
+          <div class="stat-sub">configuradas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Links Ativos</div>
+          <div class="stat-value gradient-text" id="stat-links">—</div>
+          <div class="stat-sub">publicados</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Reuniões</div>
+          <div class="stat-value gradient-text" id="stat-bookings">—</div>
+          <div class="stat-sub">confirmadas</div>
+        </div>
+      </div>
+
+      <h2 style="margin-bottom:16px">Próximas Reuniões</h2>
+      <div id="overview-bookings">
+        <div class="empty-state"><div class="empty-icon">📭</div><p>Nenhuma reunião agendada ainda.</p></div>
+      </div>
+    </div>
+
+    <!-- ── SCHEDULES ── -->
+    <div class="section" id="section-schedules">
+      <div class="section-header">
+        <h2>Minhas Agendas</h2>
+        <button class="btn btn-primary btn-sm" onclick="openScheduleModal()">+ Nova agenda</button>
+      </div>
+      <div id="schedules-list">
+        <div class="empty-state"><div class="empty-icon">⚙️</div><p>Nenhuma agenda criada. Crie a primeira!</p></div>
+      </div>
+    </div>
+
+    <!-- ── LINKS ── -->
+    <div class="section" id="section-links">
+      <div class="section-header">
+        <h2>Links Públicos</h2>
+        <button class="btn btn-primary btn-sm" onclick="openLinkModal()">+ Novo link</button>
+      </div>
+      <div id="links-list">
+        <div class="empty-state"><div class="empty-icon">🔗</div><p>Nenhum link criado ainda.</p></div>
+      </div>
+    </div>
+
+    <!-- ── BOOKINGS ── -->
+    <div class="section" id="section-bookings">
+      <h2 style="margin-bottom:16px">Todas as Reuniões</h2>
+      <div id="bookings-list">
+        <div class="empty-state"><div class="empty-icon">📅</div><p>Nenhuma reunião ainda.</p></div>
+      </div>
+    </div>
+
+    <!-- ── PROFILE ── -->
+    <div class="section" id="section-profile">
+      <div style="max-width:480px">
+        <h2 style="margin-bottom:4px">Meu Perfil</h2>
+        <p style="color:var(--text-muted);font-size:14px;margin-bottom:24px">Atualize suas informações</p>
+        <form onsubmit="saveProfile(event)">
+          <div class="form-group">
+            <label class="form-label">Nome completo</label>
+            <input type="text" id="profile-name" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bio (exibida nos links públicos)</label>
+            <textarea id="profile-bio" class="form-input" placeholder="Ex: Consultor de TI com 10 anos de experiência..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fuso horário</label>
+            <select id="profile-tz" class="form-input">
+              <option value="America/Sao_Paulo">Brasília (GMT-3)</option>
+              <option value="America/Manaus">Manaus (GMT-4)</option>
+              <option value="America/Belem">Belém (GMT-3)</option>
+              <option value="America/New_York">Nova York (GMT-5)</option>
+              <option value="Europe/Lisbon">Lisboa (GMT+0)</option>
+              <option value="Europe/London">Londres (GMT+0)</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">Salvar alterações</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODALS ─── -->
+
+<!-- Schedule Modal -->
+<div class="modal-overlay" id="schedule-modal">
+  <div class="modal" style="max-width:560px;width:100%">
+    <h2>Nova Agenda</h2>
+    <p class="subtitle">Configure os horários disponíveis para agendamento</p>
+    <form onsubmit="saveSchedule(event)">
+      <div class="form-group">
+        <label class="form-label">Nome da agenda</label>
+        <input type="text" id="sched-name" class="form-input" placeholder="Ex: Consultas, Reuniões de Vendas..." required>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Duração (min)</label>
+          <select id="sched-duration" class="form-input">
+            <option value="15">15 min</option>
+            <option value="30" selected>30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">60 min</option>
+            <option value="90">90 min</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Buffer (min)</label>
+          <select id="sched-buffer" class="form-input">
+            <option value="0" selected>0 min</option>
+            <option value="5">5 min</option>
+            <option value="10">10 min</option>
+            <option value="15">15 min</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Dias à frente</label>
+          <select id="sched-advance" class="form-input">
+            <option value="7">7 dias</option>
+            <option value="14">14 dias</option>
+            <option value="30" selected>30 dias</option>
+            <option value="60">60 dias</option>
+          </select>
+        </div>
+      </div>
+
+      <p class="form-label" style="margin-bottom:12px">Disponibilidade semanal</p>
+      <div class="days-grid" id="days-grid">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button type="submit" class="btn btn-primary" style="flex:1">Criar agenda</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('schedule-modal')">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Link Modal -->
+<div class="modal-overlay" id="link-modal">
+  <div class="modal">
+    <h2>Novo Link Público</h2>
+    <p class="subtitle">Gere um link para compartilhar sua disponibilidade</p>
+    <form onsubmit="saveLink(event)">
+      <div class="form-group">
+        <label class="form-label">Agenda</label>
+        <select id="link-schedule" class="form-input" required></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rótulo do link</label>
+        <input type="text" id="link-label" class="form-input" placeholder="Ex: Consultoria Inicial, Reunião de Vendas..." value="Link de Agendamento">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Expiração (opcional)</label>
+        <input type="datetime-local" id="link-expires" class="form-input">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button type="submit" class="btn btn-primary" style="flex:1">Gerar link</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('link-modal')">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const API_BASE = '';
+const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+let token = localStorage.getItem('token');
+let currentUser = null;
+let schedulesData = [];
+let linksData = [];
+let bookingsData = [];
+
+if (!token) window.location.href = '/';
+
+function authHeaders() {
+  return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API_BASE + path, { ...opts, headers: { ...authHeaders(), ...(opts.headers || {}) } });
+  if (res.status === 401) { logout(); return null; }
+  return res;
+}
+
+function showToast(msg, type = 'success') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = (type === 'success' ? '✅ ' : '❌ ') + msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.animation = 'fadeOut 0.3s forwards'; setTimeout(() => t.remove(), 300); }, 3500);
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = '/';
+}
+
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`section-${name}`).classList.add('active');
+  document.getElementById(`nav-${name}`).classList.add('active');
+  const titles = { overview: 'Visão Geral', schedules: 'Minhas Agendas', links: 'Links Públicos', bookings: 'Reuniões', profile: 'Perfil' };
+  document.getElementById('topbar-title').textContent = titles[name] || name;
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ─── LOAD DATA ───
+
+async function loadMe() {
+  const res = await apiFetch('/api/auth/me');
+  if (!res || !res.ok) return;
+  currentUser = await res.json();
+  const initial = currentUser.name.charAt(0).toUpperCase();
+  document.getElementById('user-avatar-sidebar').textContent = initial;
+  document.getElementById('user-name-sidebar').textContent = currentUser.name;
+  document.getElementById('user-email-sidebar').textContent = currentUser.email;
+  document.getElementById('profile-name').value = currentUser.name;
+  document.getElementById('profile-bio').value = currentUser.bio || '';
+  document.getElementById('profile-tz').value = currentUser.timezone;
+}
+
+async function loadSchedules() {
+  const res = await apiFetch('/api/schedules');
+  if (!res || !res.ok) return;
+  schedulesData = await res.json();
+  renderSchedules();
+  document.getElementById('stat-schedules').textContent = schedulesData.length;
+}
+
+async function loadLinks() {
+  const res = await apiFetch('/api/links');
+  if (!res || !res.ok) return;
+  linksData = await res.json();
+  renderLinks();
+  const active = linksData.filter(l => l.is_active).length;
+  document.getElementById('stat-links').textContent = active;
+}
+
+async function loadBookings() {
+  const res = await apiFetch('/api/links/bookings');
+  if (!res || !res.ok) return;
+  bookingsData = await res.json();
+  renderBookings();
+  renderOverviewBookings();
+  document.getElementById('stat-bookings').textContent = bookingsData.length;
+}
+
+// ─── RENDER ───
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function renderSchedules() {
+  const el = document.getElementById('schedules-list');
+  if (!schedulesData.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚙️</div><p>Nenhuma agenda criada. Crie a primeira!</p></div>';
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Nome</th><th>Duração</th><th>Buffer</th><th>Status</th><th>Ações</th></tr></thead>
+    <tbody>${schedulesData.map(s => `
+    <tr>
+      <td class="td-main">${s.name}</td>
+      <td>${s.slot_duration} min</td>
+      <td>${s.buffer_time} min</td>
+      <td><span class="badge ${s.is_active ? 'badge-success' : 'badge-error'}">${s.is_active ? '● Ativo' : '● Inativo'}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteSchedule('${s.id}')">🗑️ Excluir</button></td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function renderLinks() {
+  const el = document.getElementById('links-list');
+  if (!linksData.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔗</div><p>Nenhum link criado ainda.</p></div>';
+    return;
+  }
+  el.innerHTML = linksData.map(l => {
+    const url = `${window.location.origin}/book/${l.token}`;
+    return `<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:600;font-size:15px;color:var(--text-primary);margin-bottom:4px">${l.label}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">${l.booking_count} reunião(ões) agendada(s)</div>
+          <div class="link-box">
+            <span class="link-url">${url}</span>
+            <button class="copy-btn" onclick="copyLink('${url}')" title="Copiar">📋</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+          <span class="badge ${l.is_active ? 'badge-success' : 'badge-error'}">${l.is_active ? 'Ativo' : 'Inativo'}</span>
+          <button class="btn btn-outline btn-sm" onclick="toggleLink('${l.id}')">${l.is_active ? 'Desativar' : 'Ativar'}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteLink('${l.id}')">🗑️</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderBookings() {
+  const el = document.getElementById('bookings-list');
+  if (!bookingsData.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>Nenhuma reunião ainda.</p></div>';
+    return;
+  }
+  el.innerHTML = bookingsData.map(b => `
+    <div class="booking-card">
+      <div>
+        <div class="booking-time">📅 ${fmtDate(b.start_datetime)} → ${fmtDate(b.end_datetime)}</div>
+        <div class="booking-guest">${b.guest_name}</div>
+        <div class="booking-email">${b.guest_email}</div>
+        ${b.guest_notes ? `<div class="booking-notes">"${b.guest_notes}"</div>` : ''}
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="cancelBooking('${b.id}')">Cancelar</button>
+    </div>
+  `).join('');
+}
+
+function renderOverviewBookings() {
+  const el = document.getElementById('overview-bookings');
+  const upcoming = bookingsData.filter(b => new Date(b.start_datetime) > new Date()).slice(0, 5);
+  if (!upcoming.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>Nenhuma reunião agendada ainda.</p></div>';
+    return;
+  }
+  el.innerHTML = upcoming.map(b => `
+    <div class="booking-card">
+      <div>
+        <div class="booking-time">📅 ${fmtDate(b.start_datetime)}</div>
+        <div class="booking-guest">${b.guest_name}</div>
+        <div class="booking-email">${b.guest_email}</div>
+      </div>
+      <span class="badge badge-success">Confirmada</span>
+    </div>
+  `).join('');
+}
+
+// ─── ACTIONS ───
+
+function copyLink(url) {
+  navigator.clipboard.writeText(url).then(() => showToast('Link copiado!'));
+}
+
+async function deleteSchedule(id) {
+  if (!confirm('Excluir esta agenda? Isso também removerá os links associados.')) return;
+  const res = await apiFetch(`/api/schedules/${id}`, { method: 'DELETE' });
+  if (res && res.ok) { showToast('Agenda excluída'); await loadSchedules(); }
+  else showToast('Erro ao excluir', 'error');
+}
+
+async function toggleLink(id) {
+  const res = await apiFetch(`/api/links/${id}/toggle`, { method: 'PUT' });
+  if (res && res.ok) { showToast('Status do link atualizado'); await loadLinks(); }
+  else showToast('Erro', 'error');
+}
+
+async function deleteLink(id) {
+  if (!confirm('Excluir este link?')) return;
+  const res = await apiFetch(`/api/links/${id}`, { method: 'DELETE' });
+  if (res && res.ok) { showToast('Link excluído'); await loadLinks(); }
+  else showToast('Erro ao excluir', 'error');
+}
+
+async function cancelBooking(id) {
+  if (!confirm('Cancelar esta reunião?')) return;
+  const res = await apiFetch(`/api/links/bookings/${id}`, { method: 'DELETE' });
+  if (res && res.ok) { showToast('Reunião cancelada'); await loadBookings(); }
+  else showToast('Erro ao cancelar', 'error');
+}
+
+// ─── SCHEDULE FORM ───
+
+function openScheduleModal() {
+  renderDaysGrid();
+  openModal('schedule-modal');
+}
+
+function renderDaysGrid() {
+  const grid = document.getElementById('days-grid');
+  grid.innerHTML = DAYS.map((day, i) => `
+    <div class="day-row">
+      <label class="day-label">${day}</label>
+      <label class="toggle">
+        <input type="checkbox" id="day-${i}-enabled" ${i < 5 ? 'checked' : ''}>
+        <span class="slider"></span>
+      </label>
+      <input type="time" id="day-${i}-start" class="form-input" value="09:00" style="padding:8px 10px">
+      <span style="color:var(--text-muted);font-size:13px">às</span>
+      <input type="time" id="day-${i}-end" class="form-input" value="18:00" style="padding:8px 10px">
+    </div>
+  `).join('');
+}
+
+async function saveSchedule(e) {
+  e.preventDefault();
+  const availability = [];
+  for (let i = 0; i < 7; i++) {
+    if (document.getElementById(`day-${i}-enabled`).checked) {
+      availability.push({
+        weekday: i,
+        start_time: document.getElementById(`day-${i}-start`).value,
+        end_time: document.getElementById(`day-${i}-end`).value,
+        is_active: true,
+      });
+    }
+  }
+  const body = {
+    name: document.getElementById('sched-name').value,
+    slot_duration: parseInt(document.getElementById('sched-duration').value),
+    buffer_time: parseInt(document.getElementById('sched-buffer').value),
+    advance_days: parseInt(document.getElementById('sched-advance').value),
+    weekly_availability: availability,
+  };
+  const res = await apiFetch('/api/schedules', { method: 'POST', body: JSON.stringify(body) });
+  if (res && res.ok) {
+    showToast('Agenda criada!');
+    closeModal('schedule-modal');
+    await loadSchedules();
+  } else {
+    const err = await res?.json();
+    showToast(err?.detail || 'Erro ao criar agenda', 'error');
+  }
+}
+
+// ─── LINK FORM ───
+
+async function openLinkModal() {
+  const sel = document.getElementById('link-schedule');
+  if (!schedulesData.length) {
+    showToast('Crie uma agenda primeiro!', 'error');
+    showSection('schedules');
+    return;
+  }
+  sel.innerHTML = schedulesData.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  openModal('link-modal');
+}
+
+async function saveLink(e) {
+  e.preventDefault();
+  const expiresVal = document.getElementById('link-expires').value;
+  const body = {
+    schedule_id: document.getElementById('link-schedule').value,
+    label: document.getElementById('link-label').value,
+    expires_at: expiresVal ? new Date(expiresVal).toISOString() : null,
+  };
+  const res = await apiFetch('/api/links', { method: 'POST', body: JSON.stringify(body) });
+  if (res && res.ok) {
+    showToast('Link gerado!');
+    closeModal('link-modal');
+    await loadLinks();
+    showSection('links');
+  } else {
+    const err = await res?.json();
+    showToast(err?.detail || 'Erro ao criar link', 'error');
+  }
+}
+
+// ─── PROFILE ───
+
+async function saveProfile(e) {
+  e.preventDefault();
+  const body = {
+    name: document.getElementById('profile-name').value,
+    bio: document.getElementById('profile-bio').value,
+    timezone: document.getElementById('profile-tz').value,
+  };
+  const res = await apiFetch('/api/auth/me', { method: 'PUT', body: JSON.stringify(body) });
+  if (res && res.ok) {
+    showToast('Perfil atualizado!');
+    await loadMe();
+  } else showToast('Erro ao salvar', 'error');
+}
+
+// ─── INIT ───
+
+async function init() {
+  await loadMe();
+  await Promise.all([loadSchedules(), loadLinks(), loadBookings()]);
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: slotsync_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-slotsync}
+      POSTGRES_USER: ${POSTGRES_USER:-slotsync}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-slotsync_secret}
+    volumes:
+      - slotsync_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5450:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-slotsync}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - slotsync_net
+
+  api:
+    build: .
+    container_name: slotsync_api
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-slotsync}:${POSTGRES_PASSWORD:-slotsync_secret}@db:5432/${POSTGRES_DB:-slotsync}
+      SECRET_KEY: ${SECRET_KEY:-supersecretkey_change_in_production}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAILS_FROM_NAME: ${EMAILS_FROM_NAME:-SlotSync}
+      EMAILS_FROM_EMAIL: ${EMAILS_FROM_EMAIL:-noreply@slotsync.app}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8010}
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+    ports:
+      - "8010:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - slotsync_net
+    restart: unless-stopped
+
+volumes:
+  slotsync_pgdata:
+
+networks:
+  slotsync_net:
+    driver: bridge

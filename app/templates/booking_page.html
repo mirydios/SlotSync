@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agendar reunião com {{ owner_name }} — SlotSync</title>
+  <meta name="description" content="Escolha um horário disponível para reunião com {{ owner_name }}.">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <style>
+    body { background: var(--bg-primary); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 40px 16px; }
+
+    .booking-container { width: 100%; max-width: 900px; }
+
+    /* Header */
+    .booking-header { text-align: center; margin-bottom: 40px; }
+    .booking-logo { display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; margin-bottom: 28px; text-decoration: none; }
+    .logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--purple); display: inline-block; }
+    .owner-avatar { width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, var(--purple), var(--violet)); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; margin: 0 auto 16px; color: white; border: 3px solid rgba(99,102,241,0.3); }
+    .booking-header h1 { font-size: 26px; margin-bottom: 8px; }
+    .booking-header .link-label { display: inline-flex; align-items: center; gap: 6px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); border-radius: 100px; padding: 5px 14px; font-size: 13px; color: var(--purple-light); margin-bottom: 12px; }
+    .booking-header .bio { color: var(--text-secondary); font-size: 15px; max-width: 400px; margin: 0 auto; }
+    .meta-info { display: flex; gap: 20px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+    .meta-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); }
+
+    /* Layout */
+    .booking-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 680px) { .booking-grid { grid-template-columns: 1fr; } }
+
+    /* Calendar */
+    .cal-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
+    .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .cal-nav-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); width: 34px; height: 34px; cursor: pointer; color: var(--text-secondary); font-size: 16px; transition: var(--transition); }
+    .cal-nav-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+    .cal-month { font-size: 16px; font-weight: 700; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .cal-day-header { text-align: center; font-size: 11px; font-weight: 600; color: var(--text-muted); padding: 4px; }
+    .cal-day {
+      aspect-ratio: 1; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;
+      font-size: 13px; cursor: pointer; transition: var(--transition); border: 1px solid transparent;
+    }
+    .cal-day.empty { cursor: default; }
+    .cal-day.past { color: var(--text-muted); cursor: not-allowed; opacity: 0.4; }
+    .cal-day.available:hover { background: rgba(99,102,241,0.15); border-color: var(--border-accent); color: var(--purple-light); }
+    .cal-day.selected { background: linear-gradient(135deg, var(--purple), var(--violet)); color: white; border-color: transparent; font-weight: 700; }
+    .cal-day.today { border-color: var(--border-accent); color: var(--purple-light); }
+
+    /* Slots */
+    .slots-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
+    .slots-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; color: var(--text-secondary); }
+    .slots-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-height: 320px; overflow-y: auto; }
+    .slot-btn {
+      padding: 10px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03); color: var(--text-secondary); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: var(--transition); font-family: inherit;
+    }
+    .slot-btn:hover { background: rgba(99,102,241,0.1); border-color: var(--border-accent); color: var(--purple-light); }
+    .slot-btn.selected { background: linear-gradient(135deg, var(--purple), var(--violet)); color: white; border-color: transparent; }
+
+    /* Form panel */
+    .form-panel { grid-column: 1 / -1; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; }
+    .form-panel h2 { font-size: 18px; margin-bottom: 4px; }
+    .selected-slot-info { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 20px; font-size: 14px; color: var(--purple-light); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
+
+    /* Success */
+    .success-screen { text-align: center; padding: 60px 20px; }
+    .success-icon { font-size: 64px; margin-bottom: 20px; animation: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+    .success-screen h2 { font-size: 28px; margin-bottom: 12px; }
+    .success-screen p { color: var(--text-secondary); font-size: 16px; max-width: 400px; margin: 0 auto 24px; }
+    .success-details { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; text-align: left; max-width: 380px; margin: 0 auto; }
+    .success-detail-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 14px; }
+    .success-detail-row:last-child { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+<div class="booking-container">
+
+  <!-- Header -->
+  <div class="booking-header">
+    <a href="/" class="booking-logo">
+      <span class="logo-dot"></span>
+      SlotSync
+    </a>
+    <div class="owner-avatar" id="owner-initial">?</div>
+    <div class="link-label">📅 {{ link_label }}</div>
+    <h1>Agendar com <strong>{{ owner_name }}</strong></h1>
+    {% if owner_bio %}
+    <p class="bio">{{ owner_bio }}</p>
+    {% endif %}
+    <div class="meta-info">
+      <span class="meta-item">⏱️ {{ slot_duration }} minutos</span>
+      <span class="meta-item">🌎 {{ timezone }}</span>
+    </div>
+  </div>
+
+  <!-- Booking UI -->
+  <div id="booking-ui">
+    <div class="booking-grid">
+      <!-- Calendar -->
+      <div class="cal-panel">
+        <div class="cal-nav">
+          <button class="cal-nav-btn" onclick="prevMonth()">‹</button>
+          <span class="cal-month" id="cal-month-label"></span>
+          <button class="cal-nav-btn" onclick="nextMonth()">›</button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+
+      <!-- Slots -->
+      <div class="slots-panel">
+        <div class="slots-title" id="slots-title">Selecione uma data ←</div>
+        <div class="slots-grid" id="slots-grid">
+          <div style="grid-column:1/-1;color:var(--text-muted);font-size:14px;text-align:center;padding:40px 0">
+            Escolha uma data para ver os horários
+          </div>
+        </div>
+      </div>
+
+      <!-- Form (hidden initially) -->
+      <div class="form-panel" id="booking-form-panel" style="display:none">
+        <h2 style="margin-bottom:4px">Seus dados</h2>
+        <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px">Preencha para confirmar o agendamento</p>
+        <div class="selected-slot-info" id="selected-slot-display"></div>
+        <form onsubmit="submitBooking(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Seu nome</label>
+              <input type="text" id="guest-name" class="form-input" placeholder="João Silva" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Seu e-mail</label>
+              <input type="email" id="guest-email" class="form-input" placeholder="joao@email.com" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Assunto / observações (opcional)</label>
+            <textarea id="guest-notes" class="form-input" placeholder="Sobre o que é a reunião?"></textarea>
+          </div>
+          <div id="form-alert" style="display:none"></div>
+          <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" style="width:100%">
+            ✅ Confirmar agendamento
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success screen (hidden) -->
+  <div id="success-screen" style="display:none" class="success-screen">
+    <div class="success-icon">🎉</div>
+    <h2>Reunião confirmada!</h2>
+    <p>Você receberá um e-mail de confirmação em breve. Até lá!</p>
+    <div class="success-details" id="success-details"></div>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+  const TOKEN = '{{ token }}';
+  const SLOT_DURATION = {{ slot_duration }};
+  const OWNER_NAME = '{{ owner_name }}';
+  const TIMEZONE = '{{ timezone }}';
+  const ADVANCE_DAYS = {{ advance_days }};
+
+  document.getElementById('owner-initial').textContent = OWNER_NAME.charAt(0).toUpperCase();
+
+  let currentYear, currentMonth;
+  let selectedDate = null;
+  let selectedSlot = null;
+
+  const today = new Date();
+  currentYear = today.getFullYear();
+  currentMonth = today.getMonth();
+
+  function showToast(msg, type = 'success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = (type === 'success' ? '✅ ' : '❌ ') + msg;
+    c.appendChild(t);
+    setTimeout(() => { t.style.animation = 'fadeOut 0.3s forwards'; setTimeout(() => t.remove(), 300); }, 3500);
+  }
+
+  function renderCalendar() {
+    const label = new Date(currentYear, currentMonth, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+    document.getElementById('cal-month-label').textContent = label.charAt(0).toUpperCase() + label.slice(1);
+
+    const grid = document.getElementById('cal-grid');
+    const dayHeaders = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    let html = dayHeaders.map(d => `<div class="cal-day-header">${d}</div>`).join('');
+
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + ADVANCE_DAYS);
+
+    for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(currentYear, currentMonth, d);
+      const isPast = date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const isBeyond = date > maxDate;
+      const isToday = date.toDateString() === today.toDateString();
+      const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const isSelected = selectedDate === dateStr;
+
+      let cls = 'cal-day';
+      if (isPast || isBeyond) cls += ' past';
+      else cls += ' available';
+      if (isToday) cls += ' today';
+      if (isSelected) cls += ' selected';
+
+      const onclick = (isPast || isBeyond) ? '' : `onclick="selectDate('${dateStr}')"`;
+      html += `<div class="${cls}" ${onclick}>${d}</div>`;
+    }
+    grid.innerHTML = html;
+  }
+
+  function prevMonth() {
+    currentMonth--;
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    renderCalendar();
+  }
+  function nextMonth() {
+    currentMonth++;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    renderCalendar();
+  }
+
+  async function selectDate(dateStr) {
+    selectedDate = dateStr;
+    selectedSlot = null;
+    document.getElementById('booking-form-panel').style.display = 'none';
+    renderCalendar();
+
+    const title = document.getElementById('slots-title');
+    const grid = document.getElementById('slots-grid');
+    const d = new Date(dateStr + 'T12:00:00');
+    const dateLabel = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+    title.textContent = `Horários — ${dateLabel}`;
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px 0"><span class="spinner"></span></div>';
+
+    try {
+      const res = await fetch(`/api/public/${TOKEN}/slots?date=${dateStr}`);
+      const data = await res.json();
+      if (!data.slots || !data.slots.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1;color:var(--text-muted);font-size:14px;text-align:center;padding:30px 0">Nenhum horário disponível neste dia.</div>';
+        return;
+      }
+      grid.innerHTML = data.slots.map(s => {
+        const start = new Date(s.start);
+        const end = new Date(s.end);
+        const startStr = start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const endStr = end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return `<button class="slot-btn" onclick="selectSlot('${s.start_utc}', '${startStr}', '${endStr}', this)">${startStr} – ${endStr}</button>`;
+      }).join('');
+    } catch(e) {
+      grid.innerHTML = '<div style="grid-column:1/-1;color:var(--error);text-align:center;padding:30px 0">Erro ao carregar horários</div>';
+    }
+  }
+
+  function selectSlot(utcStart, startStr, endStr, btn) {
+    document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedSlot = utcStart;
+
+    const d = new Date(selectedDate + 'T12:00:00');
+    const dateLabel = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+
+    document.getElementById('selected-slot-display').innerHTML =
+      `📅 <strong>${dateLabel}</strong> das <strong>${startStr}</strong> às <strong>${endStr}</strong> (${TIMEZONE})`;
+    document.getElementById('booking-form-panel').style.display = 'block';
+    document.getElementById('booking-form-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function submitBooking(e) {
+    e.preventDefault();
+    if (!selectedSlot) { showToast('Selecione um horário', 'error'); return; }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Aguarde...';
+    document.getElementById('form-alert').style.display = 'none';
+
+    const body = {
+      guest_name: document.getElementById('guest-name').value,
+      guest_email: document.getElementById('guest-email').value,
+      guest_notes: document.getElementById('guest-notes').value || null,
+      start_datetime: selectedSlot,
+    };
+
+    try {
+      const res = await fetch(`/api/public/${TOKEN}/book`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Erro ao agendar');
+
+      // Show success
+      document.getElementById('booking-ui').style.display = 'none';
+      const d = new Date(data.start_datetime);
+      const dEnd = new Date(data.end_datetime);
+      const fmt = { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' };
+      const tFmt = { hour: '2-digit', minute: '2-digit' };
+      document.getElementById('success-details').innerHTML = `
+        <div class="success-detail-row">📅 <div><strong>${d.toLocaleDateString('pt-BR', fmt)}</strong><br><span style="color:var(--text-muted)">${d.toLocaleTimeString('pt-BR', tFmt)} – ${dEnd.toLocaleTimeString('pt-BR', tFmt)}</span></div></div>
+        <div class="success-detail-row">👤 <div>Reunião com <strong>${OWNER_NAME}</strong></div></div>
+        <div class="success-detail-row">✉️ <div>Confirmação enviada para <strong>${body.guest_email}</strong></div></div>
+      `;
+      document.getElementById('success-screen').style.display = 'block';
+    } catch(err) {
+      const alertEl = document.getElementById('form-alert');
+      alertEl.style.display = 'block';
+      alertEl.innerHTML = `<div class="alert alert-error">❌ ${err.message}</div>`;
+      btn.disabled = false;
+      btn.innerHTML = '✅ Confirmar agendamento';
+    }
+  }
+
+  renderCalendar();
+</script>
+</body>
+</html>

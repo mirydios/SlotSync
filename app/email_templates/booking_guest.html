@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reunião Confirmada — SlotSync</title>
+<style>
+  body { margin: 0; padding: 0; background: #0f0f1a; font-family: 'Segoe UI', Arial, sans-serif; }
+  .wrapper { max-width: 600px; margin: 40px auto; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; overflow: hidden; border: 1px solid rgba(99,102,241,0.3); }
+  .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 40px 48px; text-align: center; }
+  .header-icon { font-size: 48px; margin-bottom: 12px; }
+  .header h1 { color: #fff; margin: 0; font-size: 26px; font-weight: 700; }
+  .header p { color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 15px; }
+  .body { padding: 40px 48px; }
+  .greeting { color: #e2e8f0; font-size: 17px; margin-bottom: 24px; }
+  .card { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+  .card-row { display: flex; align-items: center; margin-bottom: 12px; }
+  .card-row:last-child { margin-bottom: 0; }
+  .card-icon { font-size: 20px; margin-right: 12px; width: 28px; text-align: center; }
+  .card-label { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .card-value { color: #e2e8f0; font-size: 15px; font-weight: 600; }
+  .notes { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 16px; margin-top: 8px; color: #94a3b8; font-size: 14px; font-style: italic; }
+  .footer { background: rgba(0,0,0,0.2); padding: 24px 48px; text-align: center; color: #475569; font-size: 13px; }
+  .footer a { color: #6366f1; text-decoration: none; }
+  .badge { display: inline-block; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #4ade80; padding: 4px 12px; border-radius: 100px; font-size: 13px; font-weight: 600; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <div class="header-icon">📅</div>
+    <h1>Reunião Confirmada!</h1>
+    <p>Seu agendamento foi realizado com sucesso</p>
+  </div>
+  <div class="body">
+    <p class="greeting">Olá, <strong style="color:#a5b4fc">{{ guest_name }}</strong>!</p>
+    <span class="badge">✅ Confirmado</span>
+    <div class="card">
+      <div class="card-row">
+        <span class="card-icon">👤</span>
+        <div>
+          <div class="card-label">Reunião com</div>
+          <div class="card-value">{{ owner_name }}</div>
+        </div>
+      </div>
+      <div class="card-row">
+        <span class="card-icon">🗓️</span>
+        <div>
+          <div class="card-label">Data e Hora (início)</div>
+          <div class="card-value">{{ start_datetime }}</div>
+        </div>
+      </div>
+      <div class="card-row">
+        <span class="card-icon">⏱️</span>
+        <div>
+          <div class="card-label">Término previsto</div>
+          <div class="card-value">{{ end_datetime }}</div>
+        </div>
+      </div>
+      {% if meeting_notes %}
+      <div class="card-row">
+        <span class="card-icon">📝</span>
+        <div>
+          <div class="card-label">Suas observações</div>
+          <div class="notes">{{ meeting_notes }}</div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    <p style="color:#64748b; font-size:14px;">Caso precise reagendar ou cancelar, entre em contato diretamente com <strong style="color:#a5b4fc">{{ owner_name }}</strong>.</p>
+  </div>
+  <div class="footer">
+    Enviado por <a href="#">{{ app_name }}</a> — Gestão de Agenda
+  </div>
+</div>
+</body>
+</html>
