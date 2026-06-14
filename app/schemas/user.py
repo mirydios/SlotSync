@@ -26,6 +26,7 @@ class UserOut(BaseModel):
     id: UUID
     name: str
     email: EmailStr
+    username: Optional[str]
     bio: Optional[str] = None
     timezone: str
     is_active: bool

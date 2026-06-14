@@ -20,6 +20,7 @@ from app.services.email import (
     send_cancellation_email_owner,
 )
 from app.services.tokens import generate_token
+from app.services.webhooks import trigger_webhook
 from app.config import settings
 
 router = APIRouter(tags=["Public"])
@@ -61,6 +62,7 @@ def booking_page(token: str, request: Request, db: Session = Depends(get_db)):
         "owner_bio": link.owner.bio or "",
         "link_label": link.label,
         "slot_duration": link.schedule.slot_duration,
+        "durations_allowed": link.schedule.durations_allowed or [link.schedule.slot_duration],
         "timezone": link.owner.timezone,
         "advance_days": link.schedule.advance_days,
         "base_url": settings.APP_BASE_URL,
@@ -111,6 +113,18 @@ async def confirm_cancel(cancel_token: str, db: Session = Depends(get_db)):
         start_datetime=start_str,
     )
 
+    await trigger_webhook(
+        db=db,
+        user_id=owner.id,
+        event="booking.cancelled",
+        payload={
+            "booking_id": str(booking.id),
+            "guest_name": booking.guest_name,
+            "guest_email": booking.guest_email,
+            "start_datetime": booking.start_datetime.isoformat(),
+        }
+    )
+
     return {"message": "Agendamento cancelado com sucesso"}
 
 
@@ -128,6 +142,7 @@ def reschedule_page(cancel_token: str, request: Request, db: Session = Depends(g
         "owner_bio": link.owner.bio or "",
         "link_label": link.label,
         "slot_duration": link.schedule.slot_duration,
+        "durations_allowed": link.schedule.durations_allowed or [link.schedule.slot_duration],
         "timezone": link.owner.timezone,
         "advance_days": link.schedule.advance_days,
         "base_url": settings.APP_BASE_URL,
@@ -152,7 +167,11 @@ async def reschedule_booking(
     if data.start_datetime <= datetime.utcnow():
         raise HTTPException(status_code=400, detail="Não é possível agendar no passado")
 
-    end_dt = data.start_datetime + timedelta(minutes=schedule.slot_duration)
+    duration = data.duration or schedule.slot_duration
+    if schedule.durations_allowed and duration not in schedule.durations_allowed:
+        raise HTTPException(status_code=400, detail="Duração não permitida para esta agenda")
+
+    end_dt = data.start_datetime + timedelta(minutes=duration)
 
     # Check conflicts (excluding old booking itself)
     conflict = (
@@ -219,6 +238,20 @@ async def reschedule_booking(
     new_booking.email_sent_owner = True
     db.commit()
 
+    await trigger_webhook(
+        db=db,
+        user_id=owner.id,
+        event="booking.rescheduled",
+        payload={
+            "old_booking_id": str(old_booking.id),
+            "new_booking_id": str(new_booking.id),
+            "guest_name": new_booking.guest_name,
+            "guest_email": new_booking.guest_email,
+            "start_datetime": new_booking.start_datetime.isoformat(),
+            "end_datetime": new_booking.end_datetime.isoformat(),
+        }
+    )
+
     return new_booking
 
 
@@ -273,7 +306,16 @@ def get_slots(request: Request, token: str, date: str, db: Session = Depends(get
     except ValueError:
         raise HTTPException(status_code=400, detail="Formato de data inválido. Use YYYY-MM-DD")
 
-    slots = get_available_slots(db, link, target_date)
+    duration = None
+    if "duration" in request.query_params:
+        try:
+            duration = int(request.query_params["duration"])
+            if link.schedule.durations_allowed and duration not in link.schedule.durations_allowed:
+                raise HTTPException(status_code=400, detail="Duração não permitida")
+        except ValueError:
+            pass
+
+    slots = get_available_slots(db, link, target_date, duration=duration)
     return {"date": date, "slots": slots, "timezone": link.owner.timezone}
 
 
@@ -289,7 +331,11 @@ async def create_booking(request: Request, token: str, data: BookingCreate, db: 
     if data.start_datetime <= datetime.utcnow():
         raise HTTPException(status_code=400, detail="Não é possível agendar no passado")
 
-    end_dt = data.start_datetime + timedelta(minutes=schedule.slot_duration)
+    duration = data.duration or schedule.slot_duration
+    if schedule.durations_allowed and duration not in schedule.durations_allowed:
+        raise HTTPException(status_code=400, detail="Duração não permitida para esta agenda")
+
+    end_dt = data.start_datetime + timedelta(minutes=duration)
 
     conflict = (
         db.query(Booking)
@@ -350,5 +396,18 @@ async def create_booking(request: Request, token: str, data: BookingCreate, db: 
     booking.email_sent_guest = True
     booking.email_sent_owner = True
     db.commit()
+
+    await trigger_webhook(
+        db=db,
+        user_id=owner.id,
+        event="booking.created",
+        payload={
+            "booking_id": str(booking.id),
+            "guest_name": booking.guest_name,
+            "guest_email": booking.guest_email,
+            "start_datetime": booking.start_datetime.isoformat(),
+            "end_datetime": booking.end_datetime.isoformat(),
+        }
+    )
 
     return booking

@@ -97,7 +97,18 @@
     </div>
     {% endif %}
     <div class="meta-info">
+      {% if durations_allowed|length > 1 %}
+      <div class="meta-item" style="display:flex;align-items:center;gap:8px">
+        <span>⏱️</span>
+        <select id="duration-select" class="form-input" style="padding:4px 8px;font-size:13px;width:auto" onchange="changeDuration(this.value)">
+          {% for dur in durations_allowed %}
+          <option value="{{ dur }}">{{ dur }} minutos</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
       <span class="meta-item">⏱️ {{ slot_duration }} minutos</span>
+      {% endif %}
       <span class="meta-item">🌎 {{ timezone }}</span>
     </div>
   </div>
@@ -172,12 +183,14 @@
 
 <script>
   const TOKEN = '{{ token }}';
-  const SLOT_DURATION = {{ slot_duration }};
   const OWNER_NAME = '{{ owner_name }}';
   const TIMEZONE = '{{ timezone }}';
   const ADVANCE_DAYS = {{ advance_days }};
   const IS_RESCHEDULE = {% if reschedule_mode %}true{% else %}false{% endif %};
   const CANCEL_TOKEN = '{{ cancel_token | default("") }}';
+  const DURATIONS_ALLOWED = {{ durations_allowed | tojson }};
+  
+  let selectedDuration = DURATIONS_ALLOWED[0];
 
   document.getElementById('owner-initial').textContent = OWNER_NAME.charAt(0).toUpperCase();
 
@@ -244,6 +257,13 @@
     renderCalendar();
   }
 
+  function changeDuration(dur) {
+    selectedDuration = parseInt(dur, 10);
+    if (selectedDate) {
+      selectDate(selectedDate); // refresh slots
+    }
+  }
+
   async function selectDate(dateStr) {
     selectedDate = dateStr;
     selectedSlot = null;
@@ -258,7 +278,7 @@
     grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px 0"><span class="spinner"></span></div>';
 
     try {
-      const res = await fetch(`/api/public/${TOKEN}/slots?date=${dateStr}`);
+      const res = await fetch(`/api/public/${TOKEN}/slots?date=${dateStr}&duration=${selectedDuration}`);
       const data = await res.json();
       if (!data.slots || !data.slots.length) {
         grid.innerHTML = '<div style="grid-column:1/-1;color:var(--text-muted);font-size:14px;text-align:center;padding:30px 0">Nenhum horário disponível neste dia.</div>';
@@ -301,7 +321,7 @@
 
     let body, url;
     if (IS_RESCHEDULE) {
-      body = { start_datetime: selectedSlot };
+      body = { start_datetime: selectedSlot, duration: selectedDuration };
       url = `/api/public/reschedule/${CANCEL_TOKEN}`;
     } else {
       body = {
@@ -309,6 +329,7 @@
         guest_email: document.getElementById('guest-email').value,
         guest_notes: document.getElementById('guest-notes').value || null,
         start_datetime: selectedSlot,
+        duration: selectedDuration
       };
       url = `/api/public/${TOKEN}/book`;
     }

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ owner.name }} — SlotSync</title>
+  <meta name="description" content="Página de agendamento de {{ owner.name }}. Escolha o tipo de reunião.">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <style>
+    body { background: var(--bg-primary); min-height: 100vh; padding: 40px 16px; display: flex; flex-direction: column; align-items: center; }
+    .profile-header { text-align: center; margin-bottom: 40px; }
+    .owner-avatar { width: 96px; height: 96px; border-radius: 50%; background: linear-gradient(135deg, var(--purple), var(--violet)); display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; margin: 0 auto 16px; color: white; border: 4px solid rgba(99,102,241,0.3); }
+    .profile-header h1 { font-size: 28px; margin-bottom: 8px; }
+    .profile-header .username { color: var(--purple-light); font-weight: 600; margin-bottom: 12px; font-size: 15px; }
+    .profile-header .bio { color: var(--text-secondary); font-size: 16px; max-width: 500px; margin: 0 auto; line-height: 1.5; }
+    
+    .links-container { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 16px; }
+    .link-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; text-decoration: none; color: inherit; display: flex; align-items: center; justify-content: space-between; transition: var(--transition); }
+    .link-card:hover { transform: translateY(-2px); border-color: var(--border-accent); background: rgba(99,102,241,0.05); }
+    .link-info h2 { font-size: 18px; margin: 0 0 8px 0; color: var(--text-primary); }
+    .link-meta { display: flex; gap: 16px; color: var(--text-muted); font-size: 13px; }
+    .link-icon { font-size: 24px; color: var(--purple-light); opacity: 0.8; }
+    .link-card:hover .link-icon { opacity: 1; transform: translateX(4px); transition: 0.2s; }
+  </style>
+</head>
+<body>
+
+  <div class="profile-header">
+    <div class="owner-avatar" id="owner-initial">?</div>
+    <h1>{{ owner.name }}</h1>
+    <div class="username">@{{ owner.username }}</div>
+    {% if owner.bio %}
+    <p class="bio">{{ owner.bio }}</p>
+    {% endif %}
+  </div>
+
+  <div class="links-container">
+    {% if not links %}
+    <div style="text-align:center; color:var(--text-muted); padding: 40px; border: 1px dashed var(--border); border-radius: var(--radius);">
+      Nenhum link público disponível no momento.
+    </div>
+    {% endif %}
+    {% for link in links %}
+    <a href="/book/{{ link.token }}" class="link-card">
+      <div class="link-info">
+        <h2>{{ link.label }}</h2>
+        <div class="link-meta">
+          <span>⏱️ {{ link.schedule.slot_duration }} min</span>
+          <span>📅 Agendamento aberto</span>
+        </div>
+      </div>
+      <div class="link-icon">➔</div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <script>
+    const OWNER_NAME = '{{ owner.name }}';
+    document.getElementById('owner-initial').textContent = OWNER_NAME.charAt(0).toUpperCase();
+  </script>
+</body>
+</html>

@@ -27,10 +27,12 @@ class BookingCreate(BaseModel):
     guest_email: EmailStr
     guest_notes: Optional[str] = None
     start_datetime: datetime
+    duration: Optional[int] = None
 
 
 class BookingReschedule(BaseModel):
     start_datetime: datetime
+    duration: Optional[int] = None
 
 
 class BookingOut(BaseModel):

@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Time
+from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, JSON, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -10,9 +10,10 @@ class Schedule(Base):
     __tablename__ = "schedules"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    name = Column(String(100), default="Minha Agenda")
-    slot_duration = Column(Integer, default=30)       # minutes
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), nullable=False)
+    slot_duration = Column(Integer, default=30)  # Deprecated in favor of durations_allowed, but kept for fallback
+    durations_allowed = Column(JSON, default=[30]) # List of allowed durations, e.g. [30, 45, 60]
     buffer_time = Column(Integer, default=0)           # minutes between meetings
     advance_days = Column(Integer, default=30)         # how many days ahead can be booked
     is_active = Column(Boolean, default=True)

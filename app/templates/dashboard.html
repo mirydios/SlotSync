@@ -212,6 +212,11 @@
         <p style="color:var(--text-muted);font-size:14px;margin-bottom:24px">Atualize suas informações</p>
         <form onsubmit="saveProfile(event)">
           <div class="form-group">
+            <label class="form-label">Nome de Usuário (@username para o perfil público)</label>
+            <input type="text" id="profile-username" class="form-input" placeholder="Ex: cesar">
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px" id="profile-url-hint"></div>
+          </div>
+          <div class="form-group">
             <label class="form-label">Nome completo</label>
             <input type="text" id="profile-name" class="form-input" required>
           </div>
@@ -250,15 +255,15 @@
         <input type="text" id="sched-name" class="form-input" placeholder="Ex: Consultas, Reuniões de Vendas..." required>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-        <div class="form-group">
-          <label class="form-label">Duração (min)</label>
-          <select id="sched-duration" class="form-input">
-            <option value="15">15 min</option>
-            <option value="30" selected>30 min</option>
-            <option value="45">45 min</option>
-            <option value="60">60 min</option>
-            <option value="90">90 min</option>
-          </select>
+        <div class="form-group" style="grid-column: span 3;">
+          <label class="form-label">Durações permitidas (minutos)</label>
+          <div id="sched-durations-checkboxes" style="display:flex;gap:12px;margin-top:8px;">
+            <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" value="15"> 15</label>
+            <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" value="30" checked> 30</label>
+            <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" value="45"> 45</label>
+            <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" value="60"> 60</label>
+            <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" value="90"> 90</label>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Buffer (min)</label>
@@ -384,8 +389,12 @@ async function loadMe() {
   document.getElementById('user-name-sidebar').textContent = currentUser.name;
   document.getElementById('user-email-sidebar').textContent = currentUser.email;
   document.getElementById('profile-name').value = currentUser.name;
+  document.getElementById('profile-username').value = currentUser.username || '';
   document.getElementById('profile-bio').value = currentUser.bio || '';
   document.getElementById('profile-tz').value = currentUser.timezone;
+  if(currentUser.username) {
+    document.getElementById('profile-url-hint').innerHTML = `Seu perfil: <a href="/u/${currentUser.username}" target="_blank">/u/${currentUser.username}</a>`;
+  }
 }
 
 async function loadSchedules() {
@@ -429,15 +438,18 @@ function renderSchedules() {
     return;
   }
   el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Nome</th><th>Duração</th><th>Buffer</th><th>Status</th><th>Ações</th></tr></thead>
-    <tbody>${schedulesData.map(s => `
+    <thead><tr><th>Nome</th><th>Durações</th><th>Buffer</th><th>Status</th><th>Ações</th></tr></thead>
+    <tbody>${schedulesData.map(s => {
+      const durLabel = (s.durations_allowed || [s.slot_duration]).join(', ') + ' min';
+      return `
     <tr>
       <td class="td-main">${s.name}</td>
-      <td>${s.slot_duration} min</td>
+      <td>${durLabel}</td>
       <td>${s.buffer_time} min</td>
       <td><span class="badge ${s.is_active ? 'badge-success' : 'badge-error'}">${s.is_active ? '● Ativo' : '● Inativo'}</span></td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteSchedule('${s.id}')">🗑️ Excluir</button></td>
-    </tr>`).join('')}
+    </tr>`;
+    }).join('')}
     </tbody></table></div>`;
 }
 
@@ -576,9 +588,15 @@ async function saveSchedule(e) {
       });
     }
   }
+  const durations = Array.from(document.querySelectorAll('#sched-durations-checkboxes input:checked')).map(cb => parseInt(cb.value));
+  if (!durations.length) {
+    showToast('Selecione pelo menos uma duração', 'error');
+    return;
+  }
   const body = {
     name: document.getElementById('sched-name').value,
-    slot_duration: parseInt(document.getElementById('sched-duration').value),
+    slot_duration: durations[0],
+    durations_allowed: durations,
     buffer_time: parseInt(document.getElementById('sched-buffer').value),
     advance_days: parseInt(document.getElementById('sched-advance').value),
     weekly_availability: availability,
@@ -631,6 +649,16 @@ async function saveLink(e) {
 
 async function saveProfile(e) {
   e.preventDefault();
+  const username = document.getElementById('profile-username').value;
+  if(username !== (currentUser.username || '')) {
+    const resUsername = await apiFetch('/api/settings/username', { method: 'PUT', body: JSON.stringify({ username }) });
+    if (!resUsername || !resUsername.ok) {
+      const err = await resUsername?.json();
+      showToast(err?.detail || 'Erro ao salvar username', 'error');
+      return;
+    }
+  }
+
   const body = {
     name: document.getElementById('profile-name').value,
     bio: document.getElementById('profile-bio').value,

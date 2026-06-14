@@ -3,6 +3,7 @@ from typing import List
 from sqlalchemy.orm import Session
 from app.models.schedule import Schedule, WeeklyAvailability
 from app.models.booking import Booking, PublicLink
+from app.models.blocked_date import BlockedDate
 import pytz
 
 
@@ -10,6 +11,7 @@ def get_available_slots(
     db: Session,
     public_link: PublicLink,
     target_date: datetime.date,
+    duration: int = None,
 ) -> List[dict]:
     """
     Returns list of available time slots for a given date.
@@ -18,6 +20,15 @@ def get_available_slots(
     schedule: Schedule = public_link.schedule
     owner = public_link.owner
     tz = pytz.timezone(owner.timezone)
+
+    # Check if date is blocked
+    is_blocked = db.query(BlockedDate).filter(
+        BlockedDate.user_id == owner.id,
+        BlockedDate.date == target_date,
+    ).first()
+    
+    if is_blocked:
+        return []
 
     # Weekday: 0=Mon, 6=Sun
     weekday = target_date.weekday()
@@ -36,7 +47,10 @@ def get_available_slots(
     if not windows:
         return []
 
-    slot_duration = timedelta(minutes=schedule.slot_duration)
+    if not duration:
+        duration = schedule.slot_duration
+        
+    slot_duration = timedelta(minutes=duration)
     buffer = timedelta(minutes=schedule.buffer_time)
 
     # Fetch existing confirmed bookings for that date

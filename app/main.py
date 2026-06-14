@@ -10,7 +10,8 @@ from pathlib import Path
 import logging
 
 from app.database import engine, Base
-from app.routers import auth, schedules, links, public
+from app.routers import auth, schedules, links, public, profile, settings as app_settings
+from app.config import settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -55,6 +56,8 @@ app.include_router(auth.router)
 app.include_router(schedules.router)
 app.include_router(links.router)
 app.include_router(public.router)
+app.include_router(profile.router)
+app.include_router(app_settings.router)
 
 
 @app.get("/", response_class=HTMLResponse)

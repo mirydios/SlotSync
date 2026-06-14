@@ -19,6 +19,7 @@ class WeeklyAvailabilityOut(WeeklyAvailabilityCreate):
 class ScheduleCreate(BaseModel):
     name: Optional[str] = "Minha Agenda"
     slot_duration: Optional[int] = 30
+    durations_allowed: Optional[List[int]] = [30]
     buffer_time: Optional[int] = 0
     advance_days: Optional[int] = 30
     weekly_availability: Optional[List[WeeklyAvailabilityCreate]] = []
@@ -27,6 +28,7 @@ class ScheduleCreate(BaseModel):
 class ScheduleUpdate(BaseModel):
     name: Optional[str] = None
     slot_duration: Optional[int] = None
+    durations_allowed: Optional[List[int]] = None
     buffer_time: Optional[int] = None
     advance_days: Optional[int] = None
     is_active: Optional[bool] = None
@@ -36,6 +38,7 @@ class ScheduleOut(BaseModel):
     id: UUID
     name: str
     slot_duration: int
+    durations_allowed: Optional[List[int]]
     buffer_time: int
     advance_days: int
     is_active: bool

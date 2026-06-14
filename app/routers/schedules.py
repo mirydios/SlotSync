@@ -22,6 +22,7 @@ def create_schedule(
         user_id=current_user.id,
         name=data.name,
         slot_duration=data.slot_duration,
+        durations_allowed=data.durations_allowed,
         buffer_time=data.buffer_time,
         advance_days=data.advance_days,
     )
