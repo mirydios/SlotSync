@@ -40,6 +40,7 @@ class Booking(Base):
     cancellation_token = Column(String(64), unique=True, nullable=True)
     email_sent_guest = Column(Boolean, default=False)
     email_sent_owner = Column(Boolean, default=False)
+    reminder_sent = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     public_link = relationship("PublicLink", back_populates="bookings")

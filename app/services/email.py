@@ -54,6 +54,25 @@ async def _send(subject: str, recipients: list, template_name: str, context: dic
     except Exception as e:
         logger.error(f"Failed to send email to {recipients}: {e}")
 
+async def send_raw_email(subject: str, to_email: str, body: str):
+    conf = _get_mail_config()
+    if not conf:
+        logger.info(f"[EMAIL MOCK] To: {to_email} | Subject: {subject} | mail disabled\n{body}")
+        return
+
+    message = MessageSchema(
+        subject=subject,
+        recipients=[to_email],
+        body=body.replace("\n", "<br>"),
+        subtype=MessageType.html,
+    )
+    fm = FastMail(conf)
+    try:
+        await fm.send_message(message)
+        logger.info(f"Raw email sent to {to_email}")
+    except Exception as e:
+        logger.error(f"Failed to send raw email to {to_email}: {e}")
+
 
 # ─── BOOKING CONFIRMATION ──────────────────────────────────────────────────────
 

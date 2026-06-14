@@ -2,10 +2,12 @@ from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import date
+from sqlalchemy import func
+from datetime import date, timedelta, datetime
 
 from app.database import get_db
 from app.models.user import User
+from app.models.booking import Booking, PublicLink
 from app.models.blocked_date import BlockedDate
 from app.models.webhook import Webhook
 from app.routers.auth import get_current_user
@@ -124,4 +126,45 @@ def delete_webhook(
         raise HTTPException(status_code=404, detail="Webhook não encontrado")
     db.delete(webhook)
     db.commit()
+
+
+# --- STATS ---
+
+@router.get("/stats")
+def get_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Returns booking counts for the last 7 days."""
+    today = date.today()
+    seven_days_ago = today - timedelta(days=6)
+    
+    # Query all bookings for this user's links
+    bookings = (
+        db.query(func.date(Booking.start_datetime).label("day"), func.count(Booking.id).label("count"))
+        .join(PublicLink)
+        .filter(
+            PublicLink.user_id == current_user.id,
+            Booking.status == "confirmed",
+            func.date(Booking.start_datetime) >= seven_days_ago,
+            func.date(Booking.start_datetime) <= today
+        )
+        .group_by(func.date(Booking.start_datetime))
+        .all()
+    )
+    
+    # Fill in missing days with 0
+    stats_dict = {str(r.day): r.count for r in bookings}
+    result = []
+    
+    for i in range(7):
+        d = seven_days_ago + timedelta(days=i)
+        d_str = d.isoformat()
+        result.append({
+            "date": d_str,
+            "label": d.strftime("%d/%m"),
+            "count": stats_dict.get(d_str, 0)
+        })
+        
+    return {"last_7_days": result}
 

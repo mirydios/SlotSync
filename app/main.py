@@ -9,9 +9,12 @@ from slowapi.errors import RateLimitExceeded
 from pathlib import Path
 import logging
 
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.background import BackgroundScheduler
 from app.database import engine, Base
 from app.routers import auth, schedules, links, public, profile, settings as app_settings
 from app.config import settings
+from app.services.reminders import run_reminders_sync
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,12 +26,25 @@ Base.metadata.create_all(bind=engine)
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(run_reminders_sync, 'interval', minutes=60)
+    scheduler.start()
+    logger.info("APScheduler started.")
+    yield
+    # Shutdown
+    scheduler.shutdown()
+    logger.info("APScheduler shutdown.")
+
 app = FastAPI(
     title="SlotSync API",
     description="API de Gestão de Agenda com links públicos de agendamento",
     version="1.1.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
 # Rate limit handler

@@ -105,6 +105,7 @@
   </style>
 </head>
 <body>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <!-- Sidebar -->
 <aside class="sidebar">
@@ -167,6 +168,11 @@
           <div class="stat-value gradient-text" id="stat-bookings">—</div>
           <div class="stat-sub">confirmadas</div>
         </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:32px">
+        <h2 style="margin-bottom:16px;font-size:16px;color:var(--text-secondary)">Reuniões nos Últimos 7 Dias</h2>
+        <canvas id="bookingsChart" height="80"></canvas>
       </div>
 
       <h2 style="margin-bottom:16px">Próximas Reuniões</h2>
@@ -334,6 +340,7 @@ let currentUser = null;
 let schedulesData = [];
 let linksData = [];
 let bookingsData = [];
+let chartInstance = null;
 
 if (!token) window.location.href = '/';
 
@@ -421,6 +428,13 @@ async function loadBookings() {
   renderBookings();
   renderOverviewBookings();
   document.getElementById('stat-bookings').textContent = bookingsData.length;
+}
+
+async function loadStats() {
+  const res = await apiFetch('/api/settings/stats');
+  if (!res || !res.ok) return;
+  const data = await res.json();
+  renderChart(data.last_7_days);
 }
 
 // ─── RENDER ───
@@ -517,6 +531,37 @@ function renderOverviewBookings() {
       <span class="badge badge-success">Confirmada</span>
     </div>
   `).join('');
+}
+
+function renderChart(stats) {
+  const ctx = document.getElementById('bookingsChart');
+  if (!ctx) return;
+  
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
+
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: stats.map(s => s.label),
+      datasets: [{
+        label: 'Reuniões',
+        data: stats.map(s => s.count),
+        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+      }
+    }
+  });
 }
 
 // ─── ACTIONS ───
@@ -675,7 +720,7 @@ async function saveProfile(e) {
 
 async function init() {
   await loadMe();
-  await Promise.all([loadSchedules(), loadLinks(), loadBookings()]);
+  await Promise.all([loadSchedules(), loadLinks(), loadBookings(), loadStats()]);
 }
 
 init();
