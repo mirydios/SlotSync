@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reunião Cancelada — SlotSync</title>
+<style>
+  body { margin: 0; padding: 0; background: #0f0f1a; font-family: 'Segoe UI', Arial, sans-serif; }
+  .wrapper { max-width: 600px; margin: 40px auto; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; overflow: hidden; border: 1px solid rgba(239,68,68,0.3); }
+  .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 40px 48px; text-align: center; }
+  .header-icon { font-size: 48px; margin-bottom: 12px; }
+  .header h1 { color: #fff; margin: 0; font-size: 26px; font-weight: 700; }
+  .header p { color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 15px; }
+  .body { padding: 40px 48px; }
+  .greeting { color: #e2e8f0; font-size: 17px; margin-bottom: 24px; }
+  .card { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+  .card-row { display: flex; align-items: flex-start; margin-bottom: 12px; }
+  .card-row:last-child { margin-bottom: 0; }
+  .card-icon { font-size: 20px; margin-right: 12px; width: 28px; text-align: center; flex-shrink:0; }
+  .card-label { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .card-value { color: #e2e8f0; font-size: 15px; font-weight: 600; text-decoration: line-through; opacity: 0.8; }
+  .badge { display: inline-block; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #f87171; padding: 4px 12px; border-radius: 100px; font-size: 13px; font-weight: 600; margin-bottom: 20px; }
+  .footer { background: rgba(0,0,0,0.2); padding: 24px 48px; text-align: center; color: #475569; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <div class="header-icon">⚠️</div>
+    <h1>Reunião Cancelada</h1>
+    <p>Um agendamento foi cancelado na sua agenda</p>
+  </div>
+  <div class="body">
+    <p class="greeting">Olá, <strong style="color:#f87171">{{ owner_name }}</strong>.</p>
+    <p style="color:#94a3b8; line-height: 1.6; margin-bottom: 20px;">O convidado <strong>{{ guest_name }}</strong> cancelou o agendamento. O horário correspondente foi liberado na sua agenda.</p>
+    <span class="badge">❌ Cancelado pelo convidado</span>
+    <div class="card">
+      <div class="card-row">
+        <span class="card-icon">👤</span>
+        <div><div class="card-label">Convidado</div><div class="card-value">{{ guest_name }} ({{ guest_email }})</div></div>
+      </div>
+      <div class="card-row">
+        <span class="card-icon">🗓️</span>
+        <div><div class="card-label">Data original</div><div class="card-value">{{ start_datetime }}</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">Enviado por {{ app_name }} — Gestão de Agenda</div>
+</div>
+</body>
+</html>

@@ -31,6 +31,32 @@ def _get_mail_config() -> Optional[ConnectionConfig]:
     )
 
 
+async def _send(subject: str, recipients: list, template_name: str, context: dict):
+    """Internal helper to render and send an email."""
+    conf = _get_mail_config()
+    if not conf:
+        logger.info(f"[EMAIL MOCK] To: {recipients} | Subject: {subject} | mail disabled")
+        return
+
+    template = jinja_env.get_template(template_name)
+    body = template.render(**context, app_name=settings.EMAILS_FROM_NAME)
+
+    message = MessageSchema(
+        subject=subject,
+        recipients=recipients,
+        body=body,
+        subtype=MessageType.html,
+    )
+    fm = FastMail(conf)
+    try:
+        await fm.send_message(message)
+        logger.info(f"Email sent to {recipients}")
+    except Exception as e:
+        logger.error(f"Failed to send email to {recipients}: {e}")
+
+
+# ─── BOOKING CONFIRMATION ──────────────────────────────────────────────────────
+
 async def send_booking_confirmation_guest(
     guest_email: str,
     guest_name: str,
@@ -38,36 +64,25 @@ async def send_booking_confirmation_guest(
     start_datetime: str,
     end_datetime: str,
     meeting_notes: Optional[str] = None,
+    cancel_url: Optional[str] = None,
+    reschedule_url: Optional[str] = None,
+    ical_url: Optional[str] = None,
 ):
-    """Send confirmation email to the guest."""
-    conf = _get_mail_config()
-    if not conf:
-        logger.info(f"[EMAIL MOCK] Confirmation to guest {guest_email} — mail disabled")
-        return
-
-    template = jinja_env.get_template("booking_guest.html")
-    body = template.render(
-        guest_name=guest_name,
-        owner_name=owner_name,
-        start_datetime=start_datetime,
-        end_datetime=end_datetime,
-        meeting_notes=meeting_notes,
-        app_name=settings.EMAILS_FROM_NAME,
-    )
-
-    message = MessageSchema(
+    await _send(
         subject=f"✅ Reunião confirmada com {owner_name}",
         recipients=[guest_email],
-        body=body,
-        subtype=MessageType.html,
+        template_name="booking_guest.html",
+        context=dict(
+            guest_name=guest_name,
+            owner_name=owner_name,
+            start_datetime=start_datetime,
+            end_datetime=end_datetime,
+            meeting_notes=meeting_notes,
+            cancel_url=cancel_url,
+            reschedule_url=reschedule_url,
+            ical_url=ical_url,
+        ),
     )
-
-    fm = FastMail(conf)
-    try:
-        await fm.send_message(message)
-        logger.info(f"Confirmation email sent to guest: {guest_email}")
-    except Exception as e:
-        logger.error(f"Failed to send guest email: {e}")
 
 
 async def send_booking_notification_owner(
@@ -79,33 +94,56 @@ async def send_booking_notification_owner(
     start_datetime: str,
     end_datetime: str,
 ):
-    """Send new booking notification to the calendar owner."""
-    conf = _get_mail_config()
-    if not conf:
-        logger.info(f"[EMAIL MOCK] Notification to owner {owner_email} — mail disabled")
-        return
-
-    template = jinja_env.get_template("booking_owner.html")
-    body = template.render(
-        owner_name=owner_name,
-        guest_name=guest_name,
-        guest_email=guest_email,
-        guest_notes=guest_notes,
-        start_datetime=start_datetime,
-        end_datetime=end_datetime,
-        app_name=settings.EMAILS_FROM_NAME,
-    )
-
-    message = MessageSchema(
+    await _send(
         subject=f"📅 Nova reunião agendada com {guest_name}",
         recipients=[owner_email],
-        body=body,
-        subtype=MessageType.html,
+        template_name="booking_owner.html",
+        context=dict(
+            owner_name=owner_name,
+            guest_name=guest_name,
+            guest_email=guest_email,
+            guest_notes=guest_notes,
+            start_datetime=start_datetime,
+            end_datetime=end_datetime,
+        ),
     )
 
-    fm = FastMail(conf)
-    try:
-        await fm.send_message(message)
-        logger.info(f"Notification email sent to owner: {owner_email}")
-    except Exception as e:
-        logger.error(f"Failed to send owner email: {e}")
+
+# ─── CANCELLATION ─────────────────────────────────────────────────────────────
+
+async def send_cancellation_email_guest(
+    guest_email: str,
+    guest_name: str,
+    owner_name: str,
+    start_datetime: str,
+):
+    await _send(
+        subject=f"❌ Reunião cancelada com {owner_name}",
+        recipients=[guest_email],
+        template_name="cancellation_guest.html",
+        context=dict(
+            guest_name=guest_name,
+            owner_name=owner_name,
+            start_datetime=start_datetime,
+        ),
+    )
+
+
+async def send_cancellation_email_owner(
+    owner_email: str,
+    owner_name: str,
+    guest_name: str,
+    guest_email: str,
+    start_datetime: str,
+):
+    await _send(
+        subject=f"❌ Reunião cancelada por {guest_name}",
+        recipients=[owner_email],
+        template_name="cancellation_owner.html",
+        context=dict(
+            owner_name=owner_name,
+            guest_name=guest_name,
+            guest_email=guest_email,
+            start_datetime=start_datetime,
+        ),
+    )

@@ -89,6 +89,13 @@
     {% if owner_bio %}
     <p class="bio">{{ owner_bio }}</p>
     {% endif %}
+
+    {% if reschedule_mode %}
+    <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 16px; border-radius: var(--radius); margin: 24px auto 0; max-width: 500px; color: #fbbf24; text-align: left;">
+      <strong style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span>🔄</span> Modo Reagendamento</strong>
+      Sua reunião original ({{ old_start }}) será cancelada ao confirmar o novo horário abaixo.
+    </div>
+    {% endif %}
     <div class="meta-info">
       <span class="meta-item">⏱️ {{ slot_duration }} minutos</span>
       <span class="meta-item">🌎 {{ timezone }}</span>
@@ -124,6 +131,9 @@
         <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px">Preencha para confirmar o agendamento</p>
         <div class="selected-slot-info" id="selected-slot-display"></div>
         <form onsubmit="submitBooking(event)">
+          {% if reschedule_mode %}
+          <!-- No user inputs needed for reschedule -->
+          {% else %}
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label">Seu nome</label>
@@ -138,6 +148,7 @@
             <label class="form-label">Assunto / observações (opcional)</label>
             <textarea id="guest-notes" class="form-input" placeholder="Sobre o que é a reunião?"></textarea>
           </div>
+          {% endif %}
           <div id="form-alert" style="display:none"></div>
           <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" style="width:100%">
             ✅ Confirmar agendamento
@@ -165,6 +176,8 @@
   const OWNER_NAME = '{{ owner_name }}';
   const TIMEZONE = '{{ timezone }}';
   const ADVANCE_DAYS = {{ advance_days }};
+  const IS_RESCHEDULE = {% if reschedule_mode %}true{% else %}false{% endif %};
+  const CANCEL_TOKEN = '{{ cancel_token | default("") }}';
 
   document.getElementById('owner-initial').textContent = OWNER_NAME.charAt(0).toUpperCase();
 
@@ -286,15 +299,22 @@
     btn.innerHTML = '<span class="spinner"></span> Aguarde...';
     document.getElementById('form-alert').style.display = 'none';
 
-    const body = {
-      guest_name: document.getElementById('guest-name').value,
-      guest_email: document.getElementById('guest-email').value,
-      guest_notes: document.getElementById('guest-notes').value || null,
-      start_datetime: selectedSlot,
-    };
+    let body, url;
+    if (IS_RESCHEDULE) {
+      body = { start_datetime: selectedSlot };
+      url = `/api/public/reschedule/${CANCEL_TOKEN}`;
+    } else {
+      body = {
+        guest_name: document.getElementById('guest-name').value,
+        guest_email: document.getElementById('guest-email').value,
+        guest_notes: document.getElementById('guest-notes').value || null,
+        start_datetime: selectedSlot,
+      };
+      url = `/api/public/${TOKEN}/book`;
+    }
 
     try {
-      const res = await fetch(`/api/public/${TOKEN}/book`, {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -311,7 +331,7 @@
       document.getElementById('success-details').innerHTML = `
         <div class="success-detail-row">📅 <div><strong>${d.toLocaleDateString('pt-BR', fmt)}</strong><br><span style="color:var(--text-muted)">${d.toLocaleTimeString('pt-BR', tFmt)} – ${dEnd.toLocaleTimeString('pt-BR', tFmt)}</span></div></div>
         <div class="success-detail-row">👤 <div>Reunião com <strong>${OWNER_NAME}</strong></div></div>
-        <div class="success-detail-row">✉️ <div>Confirmação enviada para <strong>${body.guest_email}</strong></div></div>
+        ${IS_RESCHEDULE ? '' : `<div class="success-detail-row">✉️ <div>Confirmação enviada para <strong>${body.guest_email}</strong></div></div>`}
       `;
       document.getElementById('success-screen').style.display = 'block';
     } catch(err) {

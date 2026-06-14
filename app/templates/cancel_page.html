@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancelar Reunião — SlotSync</title>
+  <link rel="stylesheet" href="/static/css/main.css">
+  <style>
+    body { background: var(--bg-primary); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 40px 16px; }
+    .cancel-container { width: 100%; max-width: 500px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px; text-align: center; }
+    .cancel-icon { font-size: 64px; margin-bottom: 24px; }
+    .cancel-title { font-size: 24px; margin-bottom: 12px; }
+    .cancel-desc { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; line-height: 1.5; }
+    .booking-details { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; text-align: left; margin-bottom: 32px; }
+    .detail-row { display: flex; gap: 12px; margin-bottom: 12px; font-size: 14px; }
+    .detail-row:last-child { margin-bottom: 0; }
+    .detail-icon { color: var(--text-muted); }
+    .btn-group { display: flex; gap: 16px; justify-content: center; }
+    .btn-group .btn { min-width: 140px; }
+    
+    /* Success state */
+    .success-state { display: none; }
+    .success-state .cancel-icon { animation: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+  </style>
+</head>
+<body>
+
+<div class="cancel-container" id="confirm-state">
+  <div class="cancel-icon">⚠️</div>
+  <h1 class="cancel-title">Cancelar Agendamento?</h1>
+  <p class="cancel-desc">Tem certeza que deseja cancelar sua reunião com <strong>{{ owner_name }}</strong>? Esta ação não pode ser desfeita e o horário será liberado para outras pessoas.</p>
+  
+  <div class="booking-details">
+    <div class="detail-row">
+      <div class="detail-icon">👤</div>
+      <div><strong>{{ guest_name }}</strong></div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-icon">🗓️</div>
+      <div>{{ start_datetime }}<br><span style="color:var(--text-muted)">até {{ end_datetime }}</span></div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <a href="/book/{{ link_token }}" class="btn btn-outline">Manter Reunião</a>
+    <button class="btn btn-primary" style="background:var(--error);border-color:var(--error);color:white" onclick="confirmCancel()" id="cancel-btn">Sim, Cancelar</button>
+  </div>
+</div>
+
+<div class="cancel-container success-state" id="success-state">
+  <div class="cancel-icon">✅</div>
+  <h1 class="cancel-title">Reunião Cancelada</h1>
+  <p class="cancel-desc">Seu agendamento foi cancelado com sucesso. Um e-mail de confirmação foi enviado para você e para {{ owner_name }}.</p>
+  <a href="/book/{{ link_token }}" class="btn btn-primary">Agendar Novo Horário</a>
+</div>
+
+<script>
+  async function confirmCancel() {
+    const btn = document.getElementById('cancel-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Cancelando...';
+
+    try {
+      const res = await fetch(`/api/public/cancel/{{ cancel_token }}`, { method: 'POST' });
+      if (!res.ok) throw new Error('Falha ao cancelar');
+      
+      document.getElementById('confirm-state').style.display = 'none';
+      document.getElementById('success-state').style.display = 'block';
+    } catch (e) {
+      alert('Ocorreu um erro ao cancelar. Tente novamente mais tarde.');
+      btn.disabled = false;
+      btn.innerHTML = 'Sim, Cancelar';
+    }
+  }
+</script>
+
+</body>
+</html>

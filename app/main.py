@@ -3,6 +3,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from pathlib import Path
 import logging
 
@@ -16,13 +19,20 @@ logger = logging.getLogger(__name__)
 # Create all tables on startup
 Base.metadata.create_all(bind=engine)
 
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+
 app = FastAPI(
     title="SlotSync API",
     description="API de Gestão de Agenda com links públicos de agendamento",
-    version="1.0.0",
+    version="1.1.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+# Rate limit handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS
 app.add_middleware(

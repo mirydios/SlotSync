@@ -29,6 +29,10 @@ class BookingCreate(BaseModel):
     start_datetime: datetime
 
 
+class BookingReschedule(BaseModel):
+    start_datetime: datetime
+
+
 class BookingOut(BaseModel):
     id: UUID
     guest_name: str
@@ -37,6 +41,7 @@ class BookingOut(BaseModel):
     start_datetime: datetime
     end_datetime: datetime
     status: str
+    cancellation_token: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

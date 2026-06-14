@@ -14,15 +14,21 @@
   .body { padding: 40px 48px; }
   .greeting { color: #e2e8f0; font-size: 17px; margin-bottom: 24px; }
   .card { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-  .card-row { display: flex; align-items: center; margin-bottom: 12px; }
+  .card-row { display: flex; align-items: flex-start; margin-bottom: 12px; }
   .card-row:last-child { margin-bottom: 0; }
-  .card-icon { font-size: 20px; margin-right: 12px; width: 28px; text-align: center; }
+  .card-icon { font-size: 20px; margin-right: 12px; width: 28px; text-align: center; flex-shrink:0; }
   .card-label { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
   .card-value { color: #e2e8f0; font-size: 15px; font-weight: 600; }
-  .notes { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 16px; margin-top: 8px; color: #94a3b8; font-size: 14px; font-style: italic; }
+  .notes { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 12px; margin-top: 6px; color: #94a3b8; font-size: 14px; font-style: italic; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .btn { display: inline-block; padding: 11px 20px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; text-align: center; }
+  .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
+  .btn-outline { background: transparent; color: #a5b4fc; border: 1px solid rgba(99,102,241,0.4); }
+  .btn-danger { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .badge { display: inline-block; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #4ade80; padding: 4px 12px; border-radius: 100px; font-size: 13px; font-weight: 600; margin-bottom: 20px; }
   .footer { background: rgba(0,0,0,0.2); padding: 24px 48px; text-align: center; color: #475569; font-size: 13px; }
   .footer a { color: #6366f1; text-decoration: none; }
-  .badge { display: inline-block; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #4ade80; padding: 4px 12px; border-radius: 100px; font-size: 13px; font-weight: 600; margin-bottom: 20px; }
+  .divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 20px 0; }
 </style>
 </head>
 <body>
@@ -38,40 +44,40 @@
     <div class="card">
       <div class="card-row">
         <span class="card-icon">👤</span>
-        <div>
-          <div class="card-label">Reunião com</div>
-          <div class="card-value">{{ owner_name }}</div>
-        </div>
+        <div><div class="card-label">Reunião com</div><div class="card-value">{{ owner_name }}</div></div>
       </div>
       <div class="card-row">
         <span class="card-icon">🗓️</span>
-        <div>
-          <div class="card-label">Data e Hora (início)</div>
-          <div class="card-value">{{ start_datetime }}</div>
-        </div>
+        <div><div class="card-label">Início</div><div class="card-value">{{ start_datetime }}</div></div>
       </div>
       <div class="card-row">
         <span class="card-icon">⏱️</span>
-        <div>
-          <div class="card-label">Término previsto</div>
-          <div class="card-value">{{ end_datetime }}</div>
-        </div>
+        <div><div class="card-label">Término previsto</div><div class="card-value">{{ end_datetime }}</div></div>
       </div>
       {% if meeting_notes %}
       <div class="card-row">
         <span class="card-icon">📝</span>
-        <div>
-          <div class="card-label">Suas observações</div>
-          <div class="notes">{{ meeting_notes }}</div>
-        </div>
+        <div><div class="card-label">Observações</div><div class="notes">{{ meeting_notes }}</div></div>
       </div>
       {% endif %}
     </div>
-    <p style="color:#64748b; font-size:14px;">Caso precise reagendar ou cancelar, entre em contato diretamente com <strong style="color:#a5b4fc">{{ owner_name }}</strong>.</p>
+
+    <hr class="divider">
+
+    <p style="color:#94a3b8;font-size:14px;margin-bottom:14px">Gerencie seu agendamento:</p>
+    <div class="actions">
+      {% if ical_url %}
+      <a href="{{ ical_url }}" class="btn btn-primary">📥 Adicionar ao Calendário</a>
+      {% endif %}
+      {% if reschedule_url %}
+      <a href="{{ reschedule_url }}" class="btn btn-outline">🔄 Reagendar</a>
+      {% endif %}
+      {% if cancel_url %}
+      <a href="{{ cancel_url }}" class="btn btn-danger">❌ Cancelar</a>
+      {% endif %}
+    </div>
   </div>
-  <div class="footer">
-    Enviado por <a href="#">{{ app_name }}</a> — Gestão de Agenda
-  </div>
+  <div class="footer">Enviado por <a href="#">{{ app_name }}</a> — Gestão de Agenda</div>
 </div>
 </body>
 </html>
